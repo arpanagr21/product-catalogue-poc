@@ -2,8 +2,11 @@
 # Dev entrypoint: make the app runnable from a fresh clone, then hand off to CMD.
 set -e
 
-if [ ! -f vendor/autoload.php ]; then
+# vendor/ lives in a container volume; (re)install only when composer.lock changes.
+LOCK_HASH=$(md5sum composer.lock | cut -d' ' -f1)
+if [ "$(cat vendor/.lock-hash 2>/dev/null)" != "$LOCK_HASH" ]; then
   composer install --no-interaction --prefer-dist
+  echo "$LOCK_HASH" > vendor/.lock-hash
 fi
 
 # Config comes from the container environment (docker-compose.yml). Laravel tooling

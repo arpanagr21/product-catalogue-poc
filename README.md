@@ -32,8 +32,9 @@ You only need Docker. No PHP or Node on your machine.
 docker compose up --build
 ```
 
-The first run takes a couple of minutes while Composer and npm install inside the containers.
-After that it starts in seconds. Once the frontend logs `VITE ready`:
+The first run takes about 5–7 minutes, mostly downloading Composer and npm packages inside the
+containers (they're kept in Docker volumes, so later starts take seconds). The frontend is up
+first; wait until the backend logs `Server running`, then open:
 
 | | |
 |---|---|
@@ -50,7 +51,7 @@ you want different credentials, `cp .env.example .env` and edit it. The CORS and
 settings are built from the port values, so they follow automatically. I put the ports in the
 47xxx range so they're unlikely to collide with whatever else you're running.
 
-To start from scratch (this wipes the database volume too):
+To start from scratch (this wipes the database and the installed dependencies too):
 
 ```bash
 docker compose down -v
