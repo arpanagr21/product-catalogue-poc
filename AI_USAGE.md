@@ -230,11 +230,11 @@ Checks that were run:
 | | |
 |---|---|
 | Planning | 20 min |
-| Building | 40 min |
-| Testing | 20 min |
-| Reviewing | 20 min |
-| **Total** | **1 h 40 min** |
+| Building | 55 min |
+| Testing | 30 min |
+| Reviewing | 25 min |
+| **Total** | **2 h 10 min** |
 
 These are my hands-on minutes. Elapsed time was longer: the session ran from about 19:40 to
-23:15, then I made the admin editor changes the next day. A lot of that was waiting for the agent
-to build and for tests and containers to run.
+23:15, then I made the admin editor changes the next day, and took React Query out the day after
+(Nov 22). A lot of that was waiting for the agent to build and for tests and containers to run.
