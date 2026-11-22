@@ -1,0 +1,90 @@
+# Local development stack. Every value has a default, so `docker compose up` works
+# without a .env; copy .env.example to .env only to change ports or credentials.
+# Host ports live in the uncommon 47xxx range to avoid clashing with other projects.
+name: product-catalogue
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-catalogue}
+      POSTGRES_USER: ${DB_USERNAME:-catalogue}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-catalogue}
+    ports:
+      - "${DB_PORT:-47432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Catches all outgoing mail; open the web UI to see enquiry emails.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${MAILPIT_UI_PORT:-47125}:8025"
+
+  backend:
+    build: ./backend
+    volumes:
+      - ./backend:/var/www/html
+    ports:
+      - "${BACKEND_PORT:-47180}:8000"
+    environment:
+      APP_NAME: Product Catalogue
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_KEY: ${APP_KEY:-}
+      APP_URL: http://localhost:${BACKEND_PORT:-47180}
+      LOG_CHANNEL: stderr
+      PHP_CLI_SERVER_WORKERS: 4
+
+      # CORS + Sanctum: derived from the same port variables so they can't drift.
+      # Cookies are host-only for "localhost" (cookies ignore ports), so no SESSION_DOMAIN.
+      FRONTEND_URL: http://localhost:${FRONTEND_PORT:-47173}
+      SANCTUM_STATEFUL_DOMAINS: localhost:${FRONTEND_PORT:-47173}
+
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-catalogue}
+      DB_USERNAME: ${DB_USERNAME:-catalogue}
+      DB_PASSWORD: ${DB_PASSWORD:-catalogue}
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      QUEUE_CONNECTION: sync
+
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-catalogue@example.com}
+      MAIL_FROM_NAME: Product Catalogue
+      SALES_INBOX_ADDRESS: ${SALES_INBOX_ADDRESS:-sales@example.com}
+
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-password}
+
+      CATALOGUE_PROVIDER: ${CATALOGUE_PROVIDER:-fakestore}
+      FAKESTORE_BASE_URL: ${FAKESTORE_BASE_URL:-https://fakestoreapi.com}
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  frontend:
+    build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Keep the container's Linux node_modules separate from the host's.
+    ports:
+      - "${FRONTEND_PORT:-47173}:5173"
+    environment:
+      VITE_API_URL: http://localhost:${BACKEND_PORT:-47180}
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
