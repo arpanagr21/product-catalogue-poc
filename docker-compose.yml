@@ -30,6 +30,8 @@ services:
     build: ./backend
     volumes:
       - ./backend:/var/www/html
+      # Dependencies live in a volume, not the bind mount: installing into a macOS bind mount is slow.
+      - backend-vendor:/var/www/html/vendor
     ports:
       - "${BACKEND_PORT:-47180}:8000"
     environment:
@@ -78,7 +80,7 @@ services:
     build: ./frontend
     volumes:
       - ./frontend:/app
-      - /app/node_modules # Keep the container's Linux node_modules separate from the host's.
+      - frontend-node-modules:/app/node_modules # Same reason; also keeps the host's macOS modules out.
     ports:
       - "${FRONTEND_PORT:-47173}:5173"
     environment:
@@ -88,3 +90,5 @@ services:
 
 volumes:
   db-data:
+  backend-vendor:
+  frontend-node-modules:

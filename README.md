@@ -10,7 +10,7 @@ behind one seam, so swapping them doesn't ripple through the codebase. More on t
 
 ## Stack
 
-- **Frontend:** React 19 + TypeScript on Vite, shadcn/ui (Tailwind v4), TanStack Query, React Router
+- **Frontend:** React 19 + TypeScript on Vite, shadcn/ui (Tailwind v4), React Router
 - **Backend:** Laravel 13 on PHP 8.5, Sanctum for cookie-based auth
 - **Data:** Fake Store API behind a `ProductProvider` interface; Postgres for our own stuff
   (featured picks, enquiries, the admin user, sessions)
@@ -32,8 +32,9 @@ You only need Docker. No PHP or Node on your machine.
 docker compose up --build
 ```
 
-The first run takes a couple of minutes while Composer and npm install inside the containers.
-After that it starts in seconds. Once the frontend logs `VITE ready`:
+The first run takes about 5–7 minutes, mostly downloading Composer and npm packages inside the
+containers (they're kept in Docker volumes, so later starts take seconds). The frontend is up
+first; wait until the backend logs `Server running`, then open:
 
 | | |
 |---|---|
@@ -50,7 +51,7 @@ you want different credentials, `cp .env.example .env` and edit it. The CORS and
 settings are built from the port values, so they follow automatically. I put the ports in the
 47xxx range so they're unlikely to collide with whatever else you're running.
 
-To start from scratch (this wipes the database volume too):
+To start from scratch (this wipes the database and the installed dependencies too):
 
 ```bash
 docker compose down -v
@@ -88,9 +89,9 @@ with one test per acceptance criterion in `src/app.test.tsx`.
 
 ```
  Browser ── React SPA ──────────────────────►  Laravel API ──► ProductService ──► ProductProvider ──► Fake Store API
-           pages → hooks (React Query)          controllers                       (interface)        (swappable)
-                 → services → apiClient              │
-                   (cookies, CSRF, errors)           ├─► Postgres: featured picks, enquiries, users, sessions
+           pages → services → apiClient         controllers                       (interface)        (swappable)
+                   (cookies, CSRF, errors)           │
+                                                     ├─► Postgres: featured picks, enquiries, users, sessions
                                                      └─► Mailer: Mailpit (dev) / SES or SMTP (prod)
 ```
 
@@ -114,8 +115,9 @@ with one test per acceptance criterion in `src/app.test.tsx`.
 - `lib/api/client.ts` is the one place requests go out. It handles the base URL, cookies, CSRF
   (including one retry if the token has expired), and turns errors into a typed `ApiError`.
 - `services/` wraps the client per area: catalogue, enquiry, auth and admin.
-- `hooks/queries.ts` wraps the services in React Query.
-- Pages and components only use those hooks.
+- Pages and components call the services directly: `useState` for the data and error,
+  `useEffect` to load it. No data-fetching library; for a handful of screens it isn't needed.
+- `AuthProvider` shares the signed-in admin between the header, login page and admin guard.
 
 ### API
 

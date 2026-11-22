@@ -98,6 +98,11 @@ product.
 - **Browser tests in the repo.** I ran Playwright against the whole stack while building, but
   didn't commit it because it would add a browser download to the reviewer's setup. It's first on
   the "next" list.
+- **A data-fetching library.** I first built the frontend on React Query, then took it out.
+  Pages now call the services directly with `useState` + `useEffect`. For a handful of screens
+  the library was more to learn than it saved. What that costs: no shared cache, so going back to
+  a page fetches it again, and no automatic retries (there's a "Try again" button instead). If
+  the app grows enough for those to matter, it can go back in behind the same services.
 - **Look and feel.** It's shadcn's neutral theme for now. The creative work is still in progress,
   and the theme is just CSS variables in `frontend/src/index.css`.
 
@@ -135,7 +140,7 @@ A few other things I did with the future in mind:
   `/api/products/{id}/image` fixes it, keeps all product data behind our API as the brief asks,
   and can later become a redirect to S3/CloudFront without the frontend noticing.
 - **I only abstracted where something will actually change.** The frontend has client → services
-  → hooks → components, and the backend has a provider behind controllers. That's about it. For
+  → components, and the backend has a provider behind controllers. That's about it. For
   example, I was going to write a generic caching wrapper for providers, but only Fake Store
   needs caching, so it lives inside that provider.
 - **AWS.** The PHP container is stateless, so it runs on Fargate (or Lambda via Bref). Then:

@@ -157,6 +157,14 @@ which is the kind of over-abstraction I'd explicitly said I didn't want. I had i
 to one interface and one service (hero prompt 8). Then it swung a little too clever the other way
 with a `#[Bind]` attribute, and I asked for a plain config map instead (hero prompt 9).
 
+**The frontend had the same problem.** It reached for React Query: query keys, a provider, cache
+invalidation and a `QueryState` wrapper, for six screens. Reviewing it, I decided that was more
+machinery than the app needed and had it switch to plain service calls (`useState` +
+`useEffect`). Its first replacement was another home-grown wrapper, so I pushed back again until
+each page simply called its service. The simpler version had one real gap: click two categories
+quickly and a slow first response could land last and show the wrong page. It now ignores
+responses the user has moved on from, and a test holds one response back to prove it.
+
 The rest, roughly in the order they happened:
 
 - **Tests were quietly hitting the wrong database.** `phpunit.xml` used `<env force="true">`, but
@@ -230,11 +238,11 @@ Checks that were run:
 | | |
 |---|---|
 | Planning | 20 min |
-| Building | 40 min |
-| Testing | 20 min |
-| Reviewing | 20 min |
-| **Total** | **1 h 40 min** |
+| Building | 55 min |
+| Testing | 30 min |
+| Reviewing | 25 min |
+| **Total** | **2 h 10 min** |
 
 These are my hands-on minutes. Elapsed time was longer: the session ran from about 19:40 to
-23:15, then I made the admin editor changes the next day. A lot of that was waiting for the agent
-to build and for tests and containers to run.
+23:15, then I made the admin editor changes the next day, and took React Query out the day after
+(Nov 22). A lot of that was waiting for the agent to build and for tests and containers to run.
