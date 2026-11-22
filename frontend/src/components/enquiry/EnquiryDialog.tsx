@@ -14,8 +14,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/FormField'
-import { useSubmitEnquiry } from '@/hooks/queries'
 import { applyServerErrors } from '@/lib/forms'
+import { enquiryService } from '@/services/enquiry.service'
 import type { Product } from '@/types/catalogue'
 
 // Mirrors StoreEnquiryRequest on the backend (which remains the source of truth).
@@ -36,7 +36,6 @@ const fields = ['name', 'email', 'phone', 'message'] as const
 export function EnquiryDialog({ product }: { product: Product }) {
   const [open, setOpen] = useState(false)
   const [thankYou, setThankYou] = useState<string | null>(null)
-  const submit = useSubmitEnquiry()
   const form = useForm<EnquiryForm>({
     resolver: zodResolver(schema),
     defaultValues: { name: '', email: '', phone: '', message: '' },
@@ -53,7 +52,7 @@ export function EnquiryDialog({ product }: { product: Product }) {
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      const message = await submit.mutateAsync({
+      const message = await enquiryService.submit({
         product_id: product.id,
         name: values.name,
         email: values.email,

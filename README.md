@@ -10,7 +10,7 @@ behind one seam, so swapping them doesn't ripple through the codebase. More on t
 
 ## Stack
 
-- **Frontend:** React 19 + TypeScript on Vite, shadcn/ui (Tailwind v4), TanStack Query, React Router
+- **Frontend:** React 19 + TypeScript on Vite, shadcn/ui (Tailwind v4), React Router
 - **Backend:** Laravel 13 on PHP 8.5, Sanctum for cookie-based auth
 - **Data:** Fake Store API behind a `ProductProvider` interface; Postgres for our own stuff
   (featured picks, enquiries, the admin user, sessions)
@@ -88,9 +88,9 @@ with one test per acceptance criterion in `src/app.test.tsx`.
 
 ```
  Browser ── React SPA ──────────────────────►  Laravel API ──► ProductService ──► ProductProvider ──► Fake Store API
-           pages → hooks (React Query)          controllers                       (interface)        (swappable)
-                 → services → apiClient              │
-                   (cookies, CSRF, errors)           ├─► Postgres: featured picks, enquiries, users, sessions
+           pages → services → apiClient         controllers                       (interface)        (swappable)
+                   (cookies, CSRF, errors)           │
+                                                     ├─► Postgres: featured picks, enquiries, users, sessions
                                                      └─► Mailer: Mailpit (dev) / SES or SMTP (prod)
 ```
 
@@ -114,8 +114,9 @@ with one test per acceptance criterion in `src/app.test.tsx`.
 - `lib/api/client.ts` is the one place requests go out. It handles the base URL, cookies, CSRF
   (including one retry if the token has expired), and turns errors into a typed `ApiError`.
 - `services/` wraps the client per area: catalogue, enquiry, auth and admin.
-- `hooks/queries.ts` wraps the services in React Query.
-- Pages and components only use those hooks.
+- Pages and components call the services directly: `useState` for the data and error,
+  `useEffect` to load it. No data-fetching library; for a handful of screens it isn't needed.
+- `AuthProvider` shares the signed-in admin between the header, login page and admin guard.
 
 ### API
 

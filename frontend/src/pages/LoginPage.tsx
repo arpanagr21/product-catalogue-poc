@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { FormField } from '@/components/FormField'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useCurrentUser, useLogin } from '@/hooks/queries'
+import { useAuth } from '@/lib/auth'
 import { applyServerErrors } from '@/lib/forms'
 
 const schema = z.object({
@@ -23,14 +23,13 @@ function safeRedirect(target: string | null): string {
 export function LoginPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { data: user } = useCurrentUser()
-  const login = useLogin()
+  const { user, login } = useAuth()
   const form = useForm<LoginForm>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } })
   const redirectTo = safeRedirect(params.get('redirect'))
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      await login.mutateAsync(values)
+      await login(values)
       navigate(redirectTo, { replace: true })
     } catch (error) {
       applyServerErrors(error, form.setError, ['email', 'password'])

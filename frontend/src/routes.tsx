@@ -1,4 +1,5 @@
 import type { RouteObject } from 'react-router'
+import { AuthProvider } from '@/components/AuthProvider'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { RequireAdmin } from '@/components/RequireAdmin'
 import { AdminFeaturedPage } from '@/pages/AdminFeaturedPage'
@@ -11,7 +12,11 @@ import { SearchPage } from '@/pages/SearchPage'
 
 export const routes: RouteObject[] = [
   {
-    element: <AppLayout />,
+    element: (
+      <AuthProvider>
+        <AppLayout />
+      </AuthProvider>
+    ),
     children: [
       { index: true, element: <HomePage /> },
       { path: 'categories/:slug', element: <CategoryPage /> },

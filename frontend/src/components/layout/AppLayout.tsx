@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { Link, Outlet, useSearchParams } from 'react-router'
 import { CategoryNav } from '@/components/catalogue/CategoryNav'
 import { SearchBar } from '@/components/catalogue/SearchBar'
 import { Button } from '@/components/ui/button'
-import { useCurrentUser, useLogout } from '@/hooks/queries'
+import { useAuth } from '@/lib/auth'
 import { config } from '@/lib/config'
 
 const year = new Date().getFullYear()
@@ -42,8 +43,13 @@ export function AppLayout() {
 }
 
 function AdminLinks() {
-  const { data: user } = useCurrentUser()
-  const logout = useLogout()
+  const { user, logout } = useAuth()
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  function onLogout() {
+    setLoggingOut(true)
+    logout().finally(() => setLoggingOut(false))
+  }
 
   if (!user) {
     return (
@@ -58,7 +64,7 @@ function AdminLinks() {
       <Link to="/admin/featured" className="hover:text-foreground">
         Manage featured
       </Link>
-      <Button variant="ghost" size="sm" onClick={() => logout.mutate()} disabled={logout.isPending}>
+      <Button variant="ghost" size="sm" onClick={onLogout} disabled={loggingOut}>
         Log out
       </Button>
     </div>

@@ -1,23 +1,34 @@
 import { ArrowDown, ArrowUp, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ProductGridSkeleton } from '@/components/catalogue/ProductGrid'
 import { PageNav, usePageParam } from '@/components/PageNav'
-import { ErrorMessage, QueryState } from '@/components/QueryState'
+import { ErrorMessage } from '@/components/ErrorMessage'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useFeaturedProducts, useProducts, useSetFeatured } from '@/hooks/queries'
 import { config } from '@/lib/config'
 import { add, move, remove, replaceAt, sameOrder, type Selection } from '@/lib/featured-selection'
-import type { Product } from '@/types/catalogue'
+import { adminService } from '@/services/admin.service'
+import { catalogueService } from '@/services/catalogue.service'
+import type { Paginated, Product } from '@/types/catalogue'
 
 const capacity = config.featuredCount
 
 export function AdminFeaturedPage() {
-  const featured = useFeaturedProducts()
+  const [featured, setFeatured] = useState<Product[] | null>(null)
+  const [error, setError] = useState<Error | null>(null)
+
+  function fetchFeatured() {
+    catalogueService.getFeatured().then((data) => {
+      setFeatured(data)
+      setError(null)
+    }, setError)
+  }
+
+  useEffect(fetchFeatured, [])
 
   return (
     <div className="space-y-6">
@@ -27,9 +38,13 @@ export function AdminFeaturedPage() {
           Choose the {capacity} “top rated” products for the home page and put them in order.
         </p>
       </div>
-      <QueryState query={featured} loading={<ProductGridSkeleton />}>
-        {(current) => <FeaturedEditor initial={current} />}
-      </QueryState>
+      {error ? (
+        <ErrorMessage error={error} onRetry={fetchFeatured} />
+      ) : featured ? (
+        <FeaturedEditor initial={featured} />
+      ) : (
+        <ProductGridSkeleton />
+      )}
     </div>
   )
 }
@@ -38,13 +53,16 @@ function FeaturedEditor({ initial }: { initial: Product[] }) {
   const [saved, setSaved] = useState<Selection>(initial)
   const [selection, setSelection] = useState<Selection>(initial)
   const [replacing, setReplacing] = useState<Product | null>(null)
-  const save = useSetFeatured()
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<Error | null>(null)
+  const [justSaved, setJustSaved] = useState(false)
 
   const isSelected = (id: string) => selection.some((p) => p.id === id)
   const dirty = !sameOrder(selection, saved)
 
   function update(next: Selection) {
-    save.reset()
+    setSaveError(null)
+    setJustSaved(false)
     setSelection(next)
   }
 
@@ -54,11 +72,18 @@ function FeaturedEditor({ initial }: { initial: Product[] }) {
     else setReplacing(product) // Full: ask which slot it should take.
   }
 
-  function onSave() {
-    save.mutate(
-      selection.map((p) => p.id),
-      { onSuccess: () => setSaved(selection) },
-    )
+  async function onSave() {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await adminService.setFeatured(selection.map((p) => p.id))
+      setSaved(selection)
+      setJustSaved(true)
+    } catch (error) {
+      setSaveError(error as Error)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -73,16 +98,16 @@ function FeaturedEditor({ initial }: { initial: Product[] }) {
         </CardHeader>
         <CardContent className="space-y-4">
           <SelectedSlots selection={selection} onChange={update} />
-          {save.isError && <ErrorMessage error={save.error} />}
+          {saveError && <ErrorMessage error={saveError} />}
           <div className="flex items-center justify-end gap-3">
-            {!dirty && save.isSuccess && (
+            {!dirty && justSaved && (
               <span className="text-sm text-emerald-700" role="status">
                 Saved
               </span>
             )}
             {dirty && <span className="text-muted-foreground text-sm">Unsaved changes</span>}
-            <Button onClick={onSave} disabled={selection.length !== capacity || !dirty || save.isPending}>
-              {save.isPending ? 'Saving…' : 'Save'}
+            <Button onClick={onSave} disabled={selection.length !== capacity || !dirty || saving}>
+              {saving ? 'Saving…' : 'Save'}
             </Button>
           </div>
         </CardContent>
@@ -104,31 +129,40 @@ function FeaturedEditor({ initial }: { initial: Product[] }) {
 /** Paginated list of every product, each with a featured checkbox. */
 function ProductPicker({ isSelected, onToggle }: { isSelected: (id: string) => boolean; onToggle: (p: Product) => void }) {
   const page = usePageParam()
-  const products = useProducts({ page })
+  const [products, setProducts] = useState<Paginated<Product> | null>(null)
+  const [error, setError] = useState<Error | null>(null)
+
+  function fetchProducts() {
+    catalogueService.getProducts({ page }).then((data) => {
+      setProducts(data)
+      setError(null)
+    }, setError)
+  }
+
+  useEffect(fetchProducts, [page])
+
+  if (error) return <ErrorMessage error={error} onRetry={fetchProducts} />
+  if (!products) return <Skeleton className="h-96" />
 
   return (
-    <QueryState query={products} loading={<Skeleton className="h-96" />}>
-      {({ data, meta }) => (
-        <div className="space-y-4">
-          <ul className="divide-y rounded-lg border" aria-label="All products" aria-busy={products.isPlaceholderData}>
-            {data.map((product) => {
-              const checkboxId = `featured-${product.id}`
-              return (
-                <li key={product.id} className="flex items-center gap-4 p-3">
-                  <Checkbox id={checkboxId} checked={isSelected(product.id)} onCheckedChange={() => onToggle(product)} />
-                  <Thumbnail product={product} />
-                  <label htmlFor={checkboxId} className="flex-1 cursor-pointer text-sm">
-                    {product.title}
-                    <span className="text-muted-foreground block text-xs">{product.category.name}</span>
-                  </label>
-                </li>
-              )
-            })}
-          </ul>
-          <PageNav meta={meta} />
-        </div>
-      )}
-    </QueryState>
+    <div className="space-y-4">
+      <ul className="divide-y rounded-lg border" aria-label="All products">
+        {products.data.map((product) => {
+          const checkboxId = `featured-${product.id}`
+          return (
+            <li key={product.id} className="flex items-center gap-4 p-3">
+              <Checkbox id={checkboxId} checked={isSelected(product.id)} onCheckedChange={() => onToggle(product)} />
+              <Thumbnail product={product} />
+              <label htmlFor={checkboxId} className="flex-1 cursor-pointer text-sm">
+                {product.title}
+                <span className="text-muted-foreground block text-xs">{product.category.name}</span>
+              </label>
+            </li>
+          )
+        })}
+      </ul>
+      <PageNav meta={products.meta} />
+    </div>
   )
 }
 

@@ -1,9 +1,16 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router'
-import { useCategories } from '@/hooks/queries'
 import { cn } from '@/lib/utils'
+import { catalogueService } from '@/services/catalogue.service'
+import type { Category } from '@/types/catalogue'
 
 export function CategoryNav() {
-  const { data: categories = [] } = useCategories()
+  const [categories, setCategories] = useState<Category[]>([])
+
+  useEffect(() => {
+    // If categories fail to load, the nav simply stays empty.
+    catalogueService.getCategories().then(setCategories).catch(() => {})
+  }, [])
 
   return (
     <nav aria-label="Categories" className="flex gap-1 overflow-x-auto">
