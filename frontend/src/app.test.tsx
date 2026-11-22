@@ -40,6 +40,22 @@ describe('Category page', () => {
     expect(tileTitles(screen.getByRole('region', { name: 'More in Jewelery' }))).toEqual(['Silver Bracelet', 'Pearl Necklace'])
   })
 
+  it('keeps showing the category clicked last when an earlier one answers late', async () => {
+    let releaseJewelery!: () => void
+    const jeweleryHeld = new Promise<void>((resolve) => (releaseJewelery = resolve))
+    // Delay Jewelery, then fall through to the normal handler.
+    server.use(http.get(api('/categories/jewelery'), () => jeweleryHeld.then(() => undefined)))
+    const { user } = renderApp('/')
+
+    await user.click(await screen.findByRole('link', { name: 'Jewelery' }))
+    await user.click(screen.getByRole('link', { name: 'Electronics' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Electronics' })).toBeInTheDocument()
+
+    releaseJewelery()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Electronics')
+  })
+
   it('shows not found for an unknown category', async () => {
     renderApp('/categories/nope')
 

@@ -157,6 +157,14 @@ which is the kind of over-abstraction I'd explicitly said I didn't want. I had i
 to one interface and one service (hero prompt 8). Then it swung a little too clever the other way
 with a `#[Bind]` attribute, and I asked for a plain config map instead (hero prompt 9).
 
+**The frontend had the same problem.** It reached for React Query: query keys, a provider, cache
+invalidation and a `QueryState` wrapper, for six screens. Reviewing it, I decided that was more
+machinery than the app needed and had it switch to plain service calls (`useState` +
+`useEffect`). Its first replacement was another home-grown wrapper, so I pushed back again until
+each page simply called its service. The simpler version had one real gap: click two categories
+quickly and a slow first response could land last and show the wrong page. It now ignores
+responses the user has moved on from, and a test holds one response back to prove it.
+
 The rest, roughly in the order they happened:
 
 - **Tests were quietly hitting the wrong database.** `phpunit.xml` used `<env force="true">`, but

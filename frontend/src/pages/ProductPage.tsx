@@ -13,17 +13,24 @@ export function ProductPage() {
   const { id = '' } = useParams()
   const [product, setProduct] = useState<Product | null>(null)
   const [error, setError] = useState<Error | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
-  function fetchProduct() {
-    catalogueService.getProduct(id).then((data) => {
-      setProduct(data)
-      setError(null)
-    }, setError)
-  }
+  useEffect(() => {
+    let current = true // Ignore the response if the user has already moved on.
+    catalogueService.getProduct(id).then(
+      (data) => {
+        if (!current) return
+        setProduct(data)
+        setError(null)
+      },
+      (error) => current && setError(error),
+    )
+    return () => {
+      current = false
+    }
+  }, [id, attempt])
 
-  useEffect(fetchProduct, [id])
-
-  if (error) return <ErrorMessage error={error} onRetry={fetchProduct} />
+  if (error) return <ErrorMessage error={error} onRetry={() => setAttempt((n) => n + 1)} />
 
   if (!product) {
     return (

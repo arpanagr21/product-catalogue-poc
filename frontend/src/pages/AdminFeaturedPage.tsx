@@ -131,17 +131,24 @@ function ProductPicker({ isSelected, onToggle }: { isSelected: (id: string) => b
   const page = usePageParam()
   const [products, setProducts] = useState<Paginated<Product> | null>(null)
   const [error, setError] = useState<Error | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
-  function fetchProducts() {
-    catalogueService.getProducts({ page }).then((data) => {
-      setProducts(data)
-      setError(null)
-    }, setError)
-  }
+  useEffect(() => {
+    let current = true // Ignore the response if the user has already moved on.
+    catalogueService.getProducts({ page }).then(
+      (data) => {
+        if (!current) return
+        setProducts(data)
+        setError(null)
+      },
+      (error) => current && setError(error),
+    )
+    return () => {
+      current = false
+    }
+  }, [page, attempt])
 
-  useEffect(fetchProducts, [page])
-
-  if (error) return <ErrorMessage error={error} onRetry={fetchProducts} />
+  if (error) return <ErrorMessage error={error} onRetry={() => setAttempt((n) => n + 1)} />
   if (!products) return <Skeleton className="h-96" />
 
   return (

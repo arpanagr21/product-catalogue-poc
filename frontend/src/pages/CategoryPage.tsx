@@ -11,17 +11,24 @@ export function CategoryPage() {
   const { slug = '' } = useParams()
   const [listing, setListing] = useState<CategoryListing | null>(null)
   const [error, setError] = useState<Error | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
-  function fetchListing() {
-    catalogueService.getCategory(slug).then((data) => {
-      setListing(data)
-      setError(null)
-    }, setError)
-  }
+  useEffect(() => {
+    let current = true // Ignore the response if the user has already moved on.
+    catalogueService.getCategory(slug).then(
+      (data) => {
+        if (!current) return
+        setListing(data)
+        setError(null)
+      },
+      (error) => current && setError(error),
+    )
+    return () => {
+      current = false
+    }
+  }, [slug, attempt])
 
-  useEffect(fetchListing, [slug])
-
-  if (error) return <ErrorMessage error={error} onRetry={fetchListing} />
+  if (error) return <ErrorMessage error={error} onRetry={() => setAttempt((n) => n + 1)} />
 
   if (!listing) {
     return (

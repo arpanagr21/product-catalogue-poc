@@ -12,16 +12,23 @@ export function SearchPage() {
   const page = usePageParam()
   const [results, setResults] = useState<Paginated<Product> | null>(null)
   const [error, setError] = useState<Error | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
-  function fetchResults() {
+  useEffect(() => {
     if (!term) return
-    catalogueService.getProducts({ term, page }).then((data) => {
-      setResults(data)
-      setError(null)
-    }, setError)
-  }
-
-  useEffect(fetchResults, [term, page])
+    let current = true // Ignore the response if the user has already moved on.
+    catalogueService.getProducts({ term, page }).then(
+      (data) => {
+        if (!current) return
+        setResults(data)
+        setError(null)
+      },
+      (error) => current && setError(error),
+    )
+    return () => {
+      current = false
+    }
+  }, [term, page, attempt])
 
   if (!term) {
     return <p className="text-muted-foreground">Enter a search term to find products.</p>
@@ -31,7 +38,7 @@ export function SearchPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">Results for “{term}”</h1>
       {error ? (
-        <ErrorMessage error={error} onRetry={fetchResults} />
+        <ErrorMessage error={error} onRetry={() => setAttempt((n) => n + 1)} />
       ) : results ? (
         <div className="space-y-6">
           <ProductGrid products={results.data} emptyMessage={`No products match “${term}”.`} />
